@@ -23,6 +23,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -34,6 +36,7 @@ import com.baidu.hugegraph.computer.core.network.MessageHandler;
 import com.baidu.hugegraph.computer.core.network.TransportConf;
 import com.baidu.hugegraph.computer.core.network.TransportServer;
 import com.baidu.hugegraph.computer.core.network.TransportUtil;
+import com.baidu.hugegraph.computer.core.network.session.ServerSession;
 import com.baidu.hugegraph.util.E;
 import com.baidu.hugegraph.util.Log;
 
@@ -54,6 +57,7 @@ public class NettyTransportServer implements TransportServer, Closeable {
     private static final String WORKER_THREAD_GROUP_NAME =
             TransportConf.SERVER_THREAD_GROUP_NAME + "-worker";
     private static final int BOSS_THREADS = 1;
+    private final Map<InetSocketAddress, ServerSession> sessionMap;
 
     private final ByteBufAllocator bufAllocator;
 
@@ -68,6 +72,7 @@ public class NettyTransportServer implements TransportServer, Closeable {
 
     public NettyTransportServer(ByteBufAllocator bufAllocator) {
         this.bufAllocator = bufAllocator;
+        this.sessionMap = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -205,8 +210,8 @@ public class NettyTransportServer implements TransportServer, Closeable {
         this.bootstrap = null;
     }
 
-    private static class ServerChannelInitializer
-                   extends ChannelInitializer<SocketChannel> {
+    private class ServerChannelInitializer
+            extends ChannelInitializer<SocketChannel> {
 
         private final MessageHandler handler;
         private final NettyProtocol protocol;
@@ -219,7 +224,13 @@ public class NettyTransportServer implements TransportServer, Closeable {
 
         @Override
         public void initChannel(SocketChannel channel) {
-            this.protocol.initializeServerPipeline(channel, this.handler);
+            InetSocketAddress address = channel.remoteAddress();
+            NettyTransportServer transportServer = NettyTransportServer.this;
+            ServerSession serverSession = transportServer.sessionMap
+                    .computeIfAbsent(address, socketAddress ->
+                    new ServerSession(transportServer.conf));
+            this.protocol.initializeServerPipeline(channel, this.handler,
+                                                   serverSession);
         }
     }
 }

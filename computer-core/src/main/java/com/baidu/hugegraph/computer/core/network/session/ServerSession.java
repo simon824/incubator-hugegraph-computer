@@ -82,16 +82,22 @@ public class ServerSession extends TransportSession {
         return this.needAckFinish();
     }
 
-    public void onRecvData(int requestId) {
+    public boolean onRecvData(int requestId) {
         E.checkArgument(this.state == TransportState.ESTABLISHED,
                         "The state must be ESTABLISHED instead of %s " +
                         "at onRecvData()", this.state);
+
+        if (requestId <= this.maxRequestId) {
+            // Already Recv Data, ignore it
+            return false;
+        }
+
         E.checkArgument(requestId == this.maxRequestId + 1,
                         "The requestId must be increasing at onRecvData(), " +
                         "requestId: %s, maxRequestId: %s", requestId,
                         this.maxRequestId);
-
         this.maxRequestId = requestId;
+        return true;
     }
 
     public void onHandledData(int requestId) {

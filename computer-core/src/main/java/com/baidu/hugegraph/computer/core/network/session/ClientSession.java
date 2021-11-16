@@ -20,6 +20,7 @@
 package com.baidu.hugegraph.computer.core.network.session;
 
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -58,6 +59,7 @@ public class ClientSession extends TransportSession {
     private final AtomicReference<CompletableFuture<Void>> startedFutureRef;
     private final AtomicReference<CompletableFuture<Void>> finishedFutureRef;
     private final Function<Message, Future<Void>> sendFunction;
+    private final LinkedList<Message> arqBuffers;
 
     public ClientSession(TransportConf conf,
                          Function<Message, Future<Void>> sendFunction) {
@@ -69,6 +71,7 @@ public class ClientSession extends TransportSession {
         this.startedFutureRef = new AtomicReference<>();
         this.finishedFutureRef = new AtomicReference<>();
         this.sendFunction = sendFunction;
+        this.arqBuffers = new LinkedList<>();
     }
 
     @Override
@@ -111,12 +114,15 @@ public class ClientSession extends TransportSession {
                         "The state must be READY instead of %s " +
                         "at startAsync()", this.state);
 
+        this.arqBuffers.clear();
+
         CompletableFuture<Void> startedFuture = new CompletableFuture<>();
         boolean success = this.startedFutureRef.compareAndSet(null,
                                                               startedFuture);
         E.checkArgument(success, "The startedFutureRef value must be null " +
                                  "at startAsync()");
 
+        this.arqBuffers.add(StartMessage.INSTANCE);
         this.stateStartSent();
         try {
             this.sendFunction.apply(StartMessage.INSTANCE);
@@ -222,6 +228,7 @@ public class ClientSession extends TransportSession {
         this.maxAckId = AbstractMessage.START_SEQ;
 
         this.stateEstablished();
+        this.arqBuffers.remove(this.maxAckId);
 
         CompletableFuture<Void> startedFuture = this.startedFutureRef.get();
         if (startedFuture != null) {
@@ -257,6 +264,11 @@ public class ClientSession extends TransportSession {
     private void onRecvDataAck(int ackId) {
         if (ackId > this.maxAckId) {
             this.maxAckId = ackId;
+            Message remove = this.arqBuffers.remove(ackId);
+            //
+            if (remove != null) {
+                remove.release();
+            }
         }
         this.updateFlowBlocking();
     }
@@ -278,5 +290,27 @@ public class ClientSession extends TransportSession {
         } finally {
             this.lock.unlock();
         }
+    }
+
+    private synchronized void expandARQ(Message message) {
+        this.arqBuffers.add(message);
+    }
+
+    private synchronized void reduceARQ(int ackId) {
+        Message message = this.arqBuffers.getFirst();
+        while (message != null && message.sequenceNumber() <= ackId) {
+            Message removeMessage = null;
+            try {
+                removeMessage = this.arqBuffers.removeFirst();
+            } finally {
+                if (removeMessage != null) {
+                    removeMessage.release();
+                }
+            }
+        }
+    }
+
+    public void arq() {
+
     }
 }

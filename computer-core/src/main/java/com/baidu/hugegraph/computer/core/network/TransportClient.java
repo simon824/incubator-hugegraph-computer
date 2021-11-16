@@ -94,4 +94,6 @@ public interface TransportClient {
      * otherwise there will be unsafe risks.
      */
     void close();
+
+    void reconnect() throws TransportException;
 }

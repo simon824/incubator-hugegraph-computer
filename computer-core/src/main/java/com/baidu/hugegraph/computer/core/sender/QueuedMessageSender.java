@@ -296,7 +296,7 @@ public class QueuedMessageSender implements MessageSender {
         @Override
         public String toString() {
             return String.format("workerId=%s(remoteAddress=%s)",
-                                 this.workerId, this.client.remoteAddress());
+                                 this.workerId, this.client.connectionId());
         }
     }
 }

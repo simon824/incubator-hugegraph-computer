@@ -121,9 +121,21 @@ public class DataClientManager implements Manager {
         @Override
         public void exceptionCaught(TransportException cause,
                                     ConnectionId connectionId) {
-            LOG.error("Channel for connectionId {} occurred exception",
-                      connectionId, cause);
-            DataClientManager.this.connManager.closeClient(connectionId);
+            if (cause.errorCode() == TransportException.CONNECTION_RESET) {
+                // Try reconnect
+                try {
+                    DataClientManager.this.connManager
+                            .getOrCreateClient(connectionId).reconnect();
+                } catch (TransportException e) {
+                    LOG.error("Channel for connectionId {} occurred exception" +
+                              " on reconnect",
+                              connectionId, e);
+                }
+            } else {
+                LOG.error("Channel for connectionId {} occurred exception",
+                          connectionId, cause);
+                DataClientManager.this.connManager.closeClient(connectionId);
+            }
         }
     }
 }

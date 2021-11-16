@@ -43,7 +43,7 @@ import io.netty.channel.ChannelFutureListener;
 
 public class NettyTransportClient implements TransportClient {
 
-    private final Channel channel;
+    private Channel channel;
     private final ConnectionId connectionId;
     private final NettyClientFactory clientFactory;
     private final ClientHandler handler;
@@ -69,8 +69,28 @@ public class NettyTransportClient implements TransportClient {
         this.session = new ClientSession(conf, this.createSendFunction());
     }
 
-    public Channel channel() {
+    public synchronized Channel channel() {
         return this.channel;
+    }
+
+    public synchronized void reconnect() throws TransportException {
+        if (this.active()) {
+            return;
+        }
+
+        this.channel.close();
+
+        int connectTimeoutMs = Math.toIntExact(
+                this.clientFactory.conf().clientConnectionTimeout());
+        Channel channel = this.clientFactory.doConnectWithRetries(
+                this.connectionId.socketAddress(),
+                this.clientFactory.conf().networkRetries(),
+                connectTimeoutMs);
+
+        this.initChannel(channel, this.connectionId,
+                         this.clientFactory.protocol(),
+                         this.handler);
+        this.channel = channel;
     }
 
     @Override
@@ -79,13 +99,13 @@ public class NettyTransportClient implements TransportClient {
     }
 
     @Override
-    public InetSocketAddress remoteAddress() {
+    public synchronized InetSocketAddress remoteAddress() {
         return (InetSocketAddress) this.channel.remoteAddress();
     }
 
     @Override
-    public boolean active() {
-        return this.channel.isActive();
+    public synchronized boolean active() {
+        return this.channel.isOpen();
     }
 
     @Override
@@ -122,23 +142,19 @@ public class NettyTransportClient implements TransportClient {
     }
 
     @Override
-    public CompletableFuture<Void> startSessionAsync() {
+    public synchronized CompletableFuture<Void> startSessionAsync() {
         return this.session.startAsync();
     }
 
     @Override
-    public void startSession() throws TransportException {
-        this.startSession(this.timeoutSyncRequest);
-    }
-
-    private void startSession(long timeout) throws TransportException {
-        this.session.start(timeout);
+    public synchronized void startSession() throws TransportException {
+        this.session.start(this.timeoutSyncRequest);
     }
 
     @Override
     public boolean send(MessageType messageType, int partition,
                         ByteBuffer buffer) throws TransportException {
-        if (!this.checkSendAvailable()) {
+        if (this.sessionActive() && !this.checkSendAvailable()) {
             return false;
         }
         this.session.sendAsync(messageType, partition, buffer);
@@ -146,17 +162,13 @@ public class NettyTransportClient implements TransportClient {
     }
 
     @Override
-    public CompletableFuture<Void> finishSessionAsync() {
+    public synchronized CompletableFuture<Void> finishSessionAsync() {
         return this.session.finishAsync();
     }
 
     @Override
-    public void finishSession() throws TransportException {
-        this.finishSession(this.timeoutFinishSession);
-    }
-
-    private void finishSession(long timeout) throws TransportException {
-        this.session.finish(timeout);
+    public synchronized void finishSession() throws TransportException {
+        this.session.finish(this.timeoutFinishSession);
     }
 
     protected boolean checkSendAvailable() {
@@ -170,7 +182,7 @@ public class NettyTransportClient implements TransportClient {
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
         if (this.channel != null) {
             long timeout = this.clientFactory.conf().closeTimeout();
             this.channel.close().awaitUninterruptibly(timeout,

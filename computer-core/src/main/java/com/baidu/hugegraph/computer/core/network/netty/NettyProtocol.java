@@ -94,7 +94,8 @@ public class NettyProtocol {
      * </pre>
      */
     protected void initializeServerPipeline(Channel channel,
-                                            MessageHandler handler) {
+                                            MessageHandler handler,
+                                            ServerSession serverSession) {
         ChannelPipeline pipeline = channel.pipeline();
 
         pipeline.addLast("encoder", ENCODER);
@@ -109,7 +110,7 @@ public class NettyProtocol {
         pipeline.addLast("serverIdleHandler", SERVER_IDLE_HANDLER);
 
         pipeline.addLast(SERVER_HANDLER_NAME,
-                         this.newNettyServerHandler(handler));
+                         this.newNettyServerHandler(handler, serverSession));
     }
 
 
@@ -178,9 +179,9 @@ public class NettyProtocol {
                          new NettyClientHandler(client));
     }
 
-    private NettyServerHandler newNettyServerHandler(MessageHandler handler) {
-        ServerSession serverSession = new ServerSession(this.conf);
-        return new NettyServerHandler(serverSession, handler);
+    private NettyServerHandler newNettyServerHandler(MessageHandler handler,
+                                                     ServerSession session) {
+        return new NettyServerHandler(session, handler);
     }
 
     private IdleStateHandler newServerIdleStateHandler() {

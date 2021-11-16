@@ -71,6 +71,7 @@ public class ChannelFutureListenerOnWrite implements ChannelFutureListener {
             exception = (TransportException) cause;
         } else {
             exception = new TransportException(
+                        TransportException.CONNECTION_RESET,
                         "Failed to send data to '%s': %s",
                         cause, TransportUtil.remoteAddress(channel),
                         cause.getMessage());

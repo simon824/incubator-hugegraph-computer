@@ -80,12 +80,15 @@ public class NettyServerHandler extends AbstractNettyHandler {
         try {
             int requestId = dataMessage.requestId();
 
-            this.serverSession.onRecvData(requestId);
+            boolean needRecvData = this.serverSession.onRecvData(requestId);
 
-            this.handler.handle(dataMessage.type(), dataMessage.partition(),
-                                dataMessage.body());
+            if (needRecvData) {
+                this.handler.handle(dataMessage.type(), dataMessage.partition(),
+                                    dataMessage.body());
+            }
 
             this.serverSession.onHandledData(requestId);
+
         } finally {
             dataMessage.release();
         }
