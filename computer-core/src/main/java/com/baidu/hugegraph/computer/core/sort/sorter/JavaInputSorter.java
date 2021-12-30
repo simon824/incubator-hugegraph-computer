@@ -28,7 +28,7 @@ import com.baidu.hugegraph.computer.core.store.hgkvfile.entry.KvEntry;
 
 public class JavaInputSorter implements InputSorter {
 
-    private static final int DEFAULT_CAPACITY = 100000;
+    private static final int DEFAULT_CAPACITY = 1000;
 
     @Override
     public Iterator<KvEntry> sort(Iterator<KvEntry> entries)
