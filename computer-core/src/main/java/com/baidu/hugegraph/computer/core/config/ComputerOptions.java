@@ -27,7 +27,7 @@ import static com.baidu.hugegraph.config.OptionChecker.positiveInt;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import com.baidu.hugegraph.computer.core.combiner.OverwriteCombiner;
+import com.baidu.hugegraph.computer.core.combiner.OverwritePropertiesCombiner;
 import com.baidu.hugegraph.computer.core.graph.partition.HashPartitioner;
 import com.baidu.hugegraph.computer.core.input.filter.DefaultInputFilter;
 import com.baidu.hugegraph.computer.core.master.DefaultMasterComputation;
@@ -89,7 +89,7 @@ public class ComputerOptions extends OptionHolder {
             new ConfigOption<>(
                     "input.source_type",
                     "The source type to load input data",
-                    allowValues("hugegraph"),
+                    allowValues("hugegraph", "loader"),
                     "hugegraph"
             );
 
@@ -172,6 +172,24 @@ public class ComputerOptions extends OptionHolder {
                     "stored and transferred together as a batch unit.",
                     positiveInt(),
                     200
+            );
+
+    public static final ConfigOption<String> INPUT_LOADER_STRUCT_PATH =
+            new ConfigOption<>(
+                    "input.loader_struct_path",
+                    "The struct path of loader input, only takes effect when " +
+                    "the input.source_type=loader is enabled",
+                    null,
+                    ""
+            );
+
+    public static final ConfigOption<String> INPUT_LOADER_SCHEMA_PATH =
+            new ConfigOption<>(
+                    "input.loader_schema_path",
+                    "The schema path of loader input, only takes effect when " +
+                    "the input.source_type=loader is enabled",
+                    null,
+                    ""
             );
 
     public static final ConfigOption<Integer> SORT_THREAD_NUMS =
@@ -289,6 +307,22 @@ public class ComputerOptions extends OptionHolder {
                     "hadoop"
             );
 
+    public static final ConfigOption<String> OUTPUT_HDFS_CORE_SITE_PATH =
+            new ConfigOption<>(
+                    "output.hdfs_core_site_path",
+                    "The hdfs core site path.",
+                    null,
+                    ""
+            );
+
+    public static final ConfigOption<String> OUTPUT_HDFS_SITE_PATH =
+            new ConfigOption<>(
+                    "output.hdfs_site_path",
+                    "The hdfs site path.",
+                    null,
+                    ""
+            );
+
     public static final ConfigOption<Short> OUTPUT_HDFS_REPLICATION =
             new ConfigOption<>(
                     "output.hdfs_replication",
@@ -319,6 +353,38 @@ public class ComputerOptions extends OptionHolder {
                     "Whether merge output files of multiple partitions.",
                     allowValues(true, false),
                     true
+            );
+
+    public static final ConfigOption<Boolean> OUTPUT_HDFS_KERBEROS_ENABLE =
+            new ConfigOption<>(
+                    "output.hdfs_kerberos_enable",
+                    "Is Kerberos authentication enabled for Hdfs.",
+                    allowValues(true, false),
+                    false
+            );
+
+    public static final ConfigOption<String> OUTPUT_HDFS_KRB5_CONF =
+            new ConfigOption<>(
+                    "output.hdfs_krb5_conf",
+                    "Kerberos configuration file.",
+                    disallowEmpty(),
+                    "/etc/krb5.conf"
+            );
+
+    public static final ConfigOption<String> OUTPUT_HDFS_KERBEROS_PRINCIPAL =
+            new ConfigOption<>(
+                    "output.hdfs_kerberos_principal",
+                    "The Hdfs's principal for kerberos authentication.",
+                    null,
+                    ""
+            );
+
+    public static final ConfigOption<String> OUTPUT_HDFS_KERBEROS_KEYTAB =
+            new ConfigOption<>(
+                    "output.hdfs_kerberos_keytab",
+                    "The Hdfs's key tab file for kerberos authentication.",
+                    null,
+                    ""
             );
 
     public static final ConfigOption<Integer>
@@ -441,7 +507,7 @@ public class ComputerOptions extends OptionHolder {
                     "The combiner can combine several properties of the same " +
                     "vertex into one properties at inputstep.",
                     disallowEmpty(),
-                    OverwriteCombiner.class
+                    OverwritePropertiesCombiner.class
             );
 
     public static final ConfigOption<Class<?>>
@@ -451,7 +517,7 @@ public class ComputerOptions extends OptionHolder {
                     "The combiner can combine several properties of the same " +
                     "edge into one properties at inputstep.",
                     disallowEmpty(),
-                    OverwriteCombiner.class
+                    OverwritePropertiesCombiner.class
             );
 
     public static final ConfigOption<Long> WORKER_RECEIVED_BUFFERS_BYTES_LIMIT =
