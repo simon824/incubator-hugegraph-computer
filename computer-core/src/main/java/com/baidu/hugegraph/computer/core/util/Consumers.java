@@ -34,9 +34,7 @@ import com.baidu.hugegraph.util.Log;
 
 public final class Consumers<V> {
 
-    private static final int CPU_CORE_NUM =
-                             Runtime.getRuntime().availableProcessors();
-    public static final int THREADS = 4 + CPU_CORE_NUM / 4;
+    public static final int DEFAULT_THREAD_NUM = 4;
     public static final int QUEUE_WORKER_SIZE = 1000;
     public static final long CONSUMER_WAKE_PERIOD = 1;
 
@@ -64,7 +62,7 @@ public final class Consumers<V> {
         this.consumer = consumer;
         this.done = done;
 
-        int workers = THREADS;
+        int workers = DEFAULT_THREAD_NUM;
         if (this.executor instanceof ThreadPoolExecutor) {
             workers = ((ThreadPoolExecutor) this.executor).getCorePoolSize();
         }
