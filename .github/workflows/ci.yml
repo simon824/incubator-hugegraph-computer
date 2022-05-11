@@ -28,7 +28,7 @@ jobs:
         env:
           HDFS_VERSION: '3.3.1'
         run:
-          $TRAVIS_DIR/install-env.sh $HDFS_VERSION
+          $TRAVIS_DIR/install-hdfs.sh $HDFS_VERSION
 
       - name: Setup Minikube-Kubernetes
         uses: manusa/actions-setup-minikube@v2.4.2
